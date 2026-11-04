@@ -1,0 +1,17 @@
+{
+  "name": "TG Studio - Montagem e Preparação para Impressão",
+  "short_name": "TG Studio",
+  "description": "Sistema de edição, montagem e preparação de artes para impressão gráfica em folhas A4 e A3",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
