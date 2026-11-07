@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/TG-Studio/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="description" content="Sistema profissional de edição e montagem de artes para impressão em folhas A4 e A3 com encaixe inteligente e bordas personalizadas." />
+    <link rel="manifest" href="/TG-Studio/manifest.json" />
+    <title>TG Studio - Montagem e Preparação para Impressão</title>
+    <script type="module" crossorigin src="/TG-Studio/assets/index-2euHRKso.js"></script>
+    <link rel="stylesheet" crossorigin href="/TG-Studio/assets/index-DZiNS-TM.css">
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 antialiased overflow-hidden select-none">
+    <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/TG-Studio/sw.js').catch((err) => {
+            console.log('SW registration error:', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
