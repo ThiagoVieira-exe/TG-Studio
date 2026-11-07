@@ -45,26 +45,39 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
     const { outerX, outerY } = geometry;
 
     if (isOutsidePaper(geometry, dimensions.width, dimensions.height)) {
-      // Outside sheet boundaries
       continue;
     }
 
+    const isRound = Boolean(item.isRound || item.shape === 'circle');
+    const rgb = hexToRgb(item.border.color);
+
     const drawBorderRects = (rectangles: typeof geometry.rectangles) => {
-      const rgb = hexToRgb(item.border.color);
       doc.setFillColor(rgb.r, rgb.g, rgb.b);
       rectangles.forEach((rect) => {
         doc.rect(outerX + rect.x, outerY + rect.y, rect.width, rect.height, 'F');
       });
     };
 
-    // Outer rectangles must be behind the image.
-    if (geometry.rectangles.length > 0) {
-      drawBorderRects(geometry.rectangles.slice(0, 4));
+    // Draw outer round or rectangular border
+    if (geometry.borderWidth > 0) {
+      if (isRound) {
+        doc.setFillColor(rgb.r, rgb.g, rgb.b);
+        const centerX = item.x + item.width / 2;
+        const centerY = item.y + item.height / 2;
+        doc.ellipse(centerX, centerY, geometry.outerWidth / 2, geometry.outerHeight / 2, 'F');
+      } else if (geometry.rectangles.length > 0) {
+        drawBorderRects(geometry.rectangles.slice(0, 4));
+      }
     }
 
-    // Draw image stretched to exact mm dimensions
+    // Draw image stretched to exact mm dimensions (round-cut if isRound)
     try {
-      const image = await toPdfCompatibleImage(item.src, item.naturalWidth, item.naturalHeight);
+      const image = await toPdfCompatibleImage(
+        item.src,
+        item.naturalWidth,
+        item.naturalHeight,
+        isRound
+      );
       doc.addImage(
         image.src,
         image.format,
@@ -77,9 +90,17 @@ export async function exportToPdf(options: PdfExportOptions): Promise<void> {
         item.rotation || 0
       );
 
-      // Inner rectangles must be drawn after the image so they remain visible.
-      if (geometry.rectangles.length > 4) {
-        drawBorderRects(geometry.rectangles.slice(4));
+      // Inner border if outer-inner mode is active
+      if (geometry.borderWidth > 0 && item.border.mode === 'outer-inner') {
+        if (isRound) {
+          doc.setDrawColor(rgb.r, rgb.g, rgb.b);
+          doc.setLineWidth(geometry.borderWidth);
+          const centerX = item.x + item.width / 2;
+          const centerY = item.y + item.height / 2;
+          doc.ellipse(centerX, centerY, item.width / 2, item.height / 2, 'S');
+        } else if (geometry.rectangles.length > 4) {
+          drawBorderRects(geometry.rectangles.slice(4));
+        }
       }
     } catch (err) {
       console.error('Erro ao adicionar imagem ao PDF:', item.name, err);

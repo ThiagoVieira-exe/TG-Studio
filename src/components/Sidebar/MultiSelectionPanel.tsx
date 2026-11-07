@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { ArtItem } from '../../types';
 import {
   AlignLeft,
@@ -15,6 +15,8 @@ import {
   Group,
   Ungroup,
   Crosshair,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react';
 import { getCombinedBounds } from '../../utils/units';
 import { formatMeasure } from '../../utils/units';
@@ -33,6 +35,7 @@ interface MultiSelectionPanelProps {
   onDistribute: (axis: 'horizontal' | 'vertical') => void;
   onBatchUpdate: (updates: Partial<ArtItem>) => void;
   onDeleteSelected: () => void;
+  onRotateSelection?: (delta: number) => void;
 }
 
 export const MultiSelectionPanel: React.FC<MultiSelectionPanelProps> = ({
@@ -46,6 +49,7 @@ export const MultiSelectionPanel: React.FC<MultiSelectionPanelProps> = ({
   onDistribute,
   onBatchUpdate,
   onDeleteSelected,
+  onRotateSelection,
 }) => {
   const combined = getCombinedBounds(selectedItems, 'outer');
   const allLocked = selectedItems.every((i) => i.locked);
@@ -58,14 +62,18 @@ export const MultiSelectionPanel: React.FC<MultiSelectionPanelProps> = ({
   const sameBorderWidth = selectedItems.every((i) => i.border.width === firstBorder?.width);
   const sameBorderColor = selectedItems.every((i) => i.border.color.toUpperCase() === firstBorder?.color.toUpperCase());
   const [borderUnit, setBorderUnit] = useState<'mm' | 'pt'>('pt');
-  const [borderDraft, setBorderDraft] = useState('');
   const displayBorderWidth = sameBorderWidth
     ? (borderUnit === 'mm' ? firstBorder?.width : (firstBorder?.width ?? 0) * 72 / 25.4)
     : '';
+  const [borderDraft, setBorderDraft] = useState(
+    displayBorderWidth === '' ? '' : formatMeasure(displayBorderWidth)
+  );
 
-  useEffect(() => {
+  const [prevSync, setPrevSync] = useState({ displayBorderWidth, borderUnit });
+  if (prevSync.displayBorderWidth !== displayBorderWidth || prevSync.borderUnit !== borderUnit) {
+    setPrevSync({ displayBorderWidth, borderUnit });
     setBorderDraft(displayBorderWidth === '' ? '' : formatMeasure(displayBorderWidth));
-  }, [displayBorderWidth, borderUnit]);
+  }
 
   const updateBorders = (changes: Partial<ArtItem['border']>) => {
     onBatchUpdate({ border: { ...firstBorder, ...changes } });
@@ -206,6 +214,47 @@ export const MultiSelectionPanel: React.FC<MultiSelectionPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Rotate Selection / Group */}
+      {onRotateSelection && (
+        <div className="space-y-2 pt-2 border-t border-zinc-800">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-zinc-300">Girar Seleção / Grupo</span>
+            <span className="text-[10px] text-zinc-500">Mantém arranjo relativo</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => onRotateSelection(-90)}
+              className="flex items-center justify-center gap-1 py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-lg text-[11px] font-medium transition"
+              title="Girar todas as artes selecionadas 90° anti-horário mantendo formação"
+            >
+              <RotateCcw size={13} className="text-indigo-400" />
+              <span>-90°</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRotateSelection(90)}
+              className="flex items-center justify-center gap-1 py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-lg text-[11px] font-medium transition"
+              title="Girar todas as artes selecionadas 90° horário mantendo formação"
+            >
+              <RotateCw size={13} className="text-indigo-400" />
+              <span>+90°</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRotateSelection(180)}
+              className="flex items-center justify-center gap-1 py-2 bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 rounded-lg text-[11px] font-medium transition"
+              title="Girar todas as artes selecionadas 180° invertendo posição mantendo formação"
+            >
+              <span>180°</span>
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-500">
+            Gira todas as artes ao mesmo tempo em torno do centro do grupo, preservando as distâncias relativas entre elas.
+          </p>
+        </div>
+      )}
 
       {/* Distribution Tools */}
       <div className="space-y-2">

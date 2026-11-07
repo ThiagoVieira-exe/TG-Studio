@@ -7,32 +7,33 @@ interface SnapResult {
   guides: SnapGuide[];
 }
 
+/**
+ * Computes magnetic snapping for art items aligned against other art items on the page.
+ * References are strictly the other items' outer bounds (measures + borders) in rows and columns.
+ */
 export function computeSnapping(
   draggedItem: ArtItem,
   candidateX: number,
   candidateY: number,
   otherItems: ArtItem[],
-  paper: PaperDimensions,
-  settings: SnappingSettings,
+  _paper?: PaperDimensions,
+  settings?: SnappingSettings,
   zoom: number = 1
 ): SnapResult {
-  if (!settings.enabled) {
+  if (settings && !settings.enabled) {
     return { x: candidateX, y: candidateY, guides: [] };
   }
 
-  // Snapping threshold in millimeters (corresponds to approx 8 screen pixels)
+  // Snapping threshold in millimeters (corresponds to approx 8-10 screen pixels)
   const thresholdMm = Math.max(1.0, 8 / (3.78 * zoom));
 
-  const hasBorder = settings.reference === 'outer' && draggedItem.border.enabled && draggedItem.border.width > 0;
-  const bWidth = hasBorder ? draggedItem.border.width : 0;
-
-  // Dragged item dimensions based on reference
-  const itemW = draggedItem.width + (bWidth * 2);
-  const itemH = draggedItem.height + (bWidth * 2);
+  const bWidth = draggedItem.border.enabled && draggedItem.border.width > 0 ? draggedItem.border.width : 0;
+  const itemW = draggedItem.width + bWidth * 2;
+  const itemH = draggedItem.height + bWidth * 2;
 
   // Outer bounds candidate
-  let outerX = candidateX - bWidth;
-  let outerY = candidateY - bWidth;
+  const outerX = candidateX - bWidth;
+  const outerY = candidateY - bWidth;
 
   let bestDiffX = thresholdMm;
   let bestSnapOuterX = outerX;
@@ -41,8 +42,6 @@ export function computeSnapping(
   let bestDiffY = thresholdMm;
   let bestSnapOuterY = outerY;
   const activeYGuides: SnapGuide[] = [];
-
-  const spacing = Math.max(0, settings.spacing);
 
   // Helper to test X snaps
   const testSnapX = (
@@ -56,7 +55,7 @@ export function computeSnapping(
     if (diff < bestDiffX) {
       bestDiffX = diff;
       bestSnapOuterX = targetOuterX;
-      activeXGuides.length = 0; // Replace with better snap
+      activeXGuides.length = 0;
       activeXGuides.push({
         type: 'vertical',
         position: guideX,
@@ -106,79 +105,42 @@ export function computeSnapping(
     }
   };
 
-  // 1. Snap to Sheet
-  if (settings.snapToSheet) {
-    // Sheet Left, Center, Right
-    testSnapX(0, 0, 0, paper.height, 'Borda Folha');
-    testSnapX((paper.width - itemW) / 2, paper.width / 2, 0, paper.height, 'Centro Folha');
-    testSnapX(paper.width - itemW, paper.width, 0, paper.height, 'Borda Folha');
-
-    // Sheet Top, Center, Bottom
-    testSnapY(0, 0, 0, paper.width, 'Borda Folha');
-    testSnapY((paper.height - itemH) / 2, paper.height / 2, 0, paper.width, 'Centro Folha');
-    testSnapY(paper.height - itemH, paper.height, 0, paper.width, 'Borda Folha');
-
-    // Margins
-    if (settings.snapToMargins && settings.margin > 0) {
-      const m = settings.margin;
-      testSnapX(m, m, 0, paper.height, `Margem ${m}mm`);
-      testSnapX(paper.width - m - itemW, paper.width - m, 0, paper.height, `Margem ${m}mm`);
-
-      testSnapY(m, m, 0, paper.width, `Margem ${m}mm`);
-      testSnapY(paper.height - m - itemH, paper.height - m, 0, paper.width, `Margem ${m}mm`);
-    }
-  }
-
-  // 2. Snap to other items
+  // Snap against other items on the sheet by outer boundaries (measure + border)
   for (const other of otherItems) {
     if (other.id === draggedItem.id) continue;
-    const b = getItemBounds(other, settings.reference);
+    const b = getItemBounds(other, 'outer');
 
-    // --- X Snaps ---
+    // --- Column (X) alignments ---
     // Left align: dragged.left = other.left
     testSnapX(b.x, b.x, b.y, b.bottom, 'Alinhamento Esquerda');
 
-    // Right align: dragged.right = other.right => outerX = b.right - itemW
-    testSnapX(b.right - itemW, b.right, b.y, b.bottom, 'Alinhamento Direita');
-
-    // Center X align: dragged.center = other.center => outerX = b.centerX - itemW / 2
+    // Center X align: dragged.centerX = other.centerX
     testSnapX(b.centerX - itemW / 2, b.centerX, b.y, b.bottom, 'Centro');
 
-    // Left to Right edge: dragged.left = other.right
-    testSnapX(b.right, b.right, b.y, b.bottom, 'Encaixe');
+    // Right align: dragged.right = other.right
+    testSnapX(b.right - itemW, b.right, b.y, b.bottom, 'Alinhamento Direita');
 
-    // Right to Left edge: dragged.right = other.left => outerX = b.x - itemW
-    testSnapX(b.x - itemW, b.x, b.y, b.bottom, 'Encaixe');
+    // Encosto Lado a Lado: dragged.left = other.right
+    testSnapX(b.right, b.right, b.y, b.bottom, 'Encaixe Lateral');
 
-    // Side-by-side with custom spacing:
-    // Placed to the right of other:
-    testSnapX(b.right + spacing, b.right + spacing, b.y, b.bottom, spacing > 0 ? `Espaçamento ${spacing}mm` : 'Encaixe 0mm');
+    // Encosto Lado a Lado: dragged.right = other.left
+    testSnapX(b.x - itemW, b.x, b.y, b.bottom, 'Encaixe Lateral');
 
-    // Placed to the left of other:
-    testSnapX(b.x - spacing - itemW, b.x - spacing, b.y, b.bottom, spacing > 0 ? `Espaçamento ${spacing}mm` : 'Encaixe 0mm');
-
-    // --- Y Snaps ---
+    // --- Row (Y) alignments ---
     // Top align: dragged.top = other.top
     testSnapY(b.y, b.y, b.x, b.right, 'Alinhamento Topo');
 
-    // Bottom align: dragged.bottom = other.bottom => outerY = b.bottom - itemH
-    testSnapY(b.bottom - itemH, b.bottom, b.x, b.right, 'Alinhamento Base');
-
-    // Center Y align: dragged.centerY = other.centerY => outerY = b.centerY - itemH / 2
+    // Center Y align: dragged.centerY = other.centerY
     testSnapY(b.centerY - itemH / 2, b.centerY, b.x, b.right, 'Centro');
 
-    // Top to Bottom edge: dragged.top = other.bottom
-    testSnapY(b.bottom, b.bottom, b.x, b.right, 'Encaixe');
+    // Bottom align: dragged.bottom = other.bottom
+    testSnapY(b.bottom - itemH, b.bottom, b.x, b.right, 'Alinhamento Base');
 
-    // Bottom to Top edge: dragged.bottom = other.top => outerY = b.y - itemH
-    testSnapY(b.y - itemH, b.y, b.x, b.right, 'Encaixe');
+    // Encosto Empilhado: dragged.top = other.bottom
+    testSnapY(b.bottom, b.bottom, b.x, b.right, 'Encaixe Vertical');
 
-    // Stacked above/below with custom spacing:
-    // Placed below other:
-    testSnapY(b.bottom + spacing, b.bottom + spacing, b.x, b.right, spacing > 0 ? `Espaçamento ${spacing}mm` : 'Encaixe 0mm');
-
-    // Placed above other:
-    testSnapY(b.y - spacing - itemH, b.y - spacing, b.x, b.right, spacing > 0 ? `Espaçamento ${spacing}mm` : 'Encaixe 0mm');
+    // Encosto Empilhado: dragged.bottom = other.top
+    testSnapY(b.y - itemH, b.y, b.x, b.right, 'Encaixe Vertical');
   }
 
   // Convert snapped outer coordinates back to content candidate (candidate = outer + bWidth)

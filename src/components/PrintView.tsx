@@ -38,6 +38,7 @@ export const PrintView: React.FC<PrintViewProps> = ({
       `}</style>
 
       {printableItems.map(({ item, borderWidth, outerX, outerY, outerWidth, outerHeight }) => {
+        const isRound = Boolean(item.isRound || item.shape === 'circle');
         return (
           <div
             key={item.id}
@@ -65,6 +66,7 @@ export const PrintView: React.FC<PrintViewProps> = ({
                 top: `${borderWidth}mm`,
                 width: `${item.width}mm`,
                 height: `${item.height}mm`,
+                borderRadius: isRound ? '50%' : undefined,
                 objectFit: 'fill',
                 display: 'block',
                 zIndex: 1,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type {
   ArtItem,
   PaperDimensions,
@@ -45,6 +45,7 @@ interface SidebarProps {
   onGroup: () => void;
   onUngroup: () => void;
   onCenterOnSheet: (axis?: 'both' | 'horizontal' | 'vertical') => void;
+  onRotateSelection?: (delta: number) => void;
 }
 
 type TabType = 'properties' | 'sheet' | 'layers';
@@ -81,15 +82,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onGroup,
   onUngroup,
   onCenterOnSheet,
+  onRotateSelection,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('properties');
 
-  // Auto-switch to properties tab when user selects an item
-  useEffect(() => {
-    if (selectedIds.length > 0) {
+  // Auto-switch to properties tab when user selects an item (adjust during render, avoiding effect setState)
+  const [prevSelectedCount, setPrevSelectedCount] = useState(selectedIds.length);
+  if (selectedIds.length !== prevSelectedCount) {
+    setPrevSelectedCount(selectedIds.length);
+    if (selectedIds.length > 0 && prevSelectedCount === 0) {
       setActiveTab('properties');
     }
-  }, [selectedIds]);
+  }
 
   const selectedItems = items.filter((i) => selectedIds.includes(i.id));
   const singleItem = selectedItems.length === 1 ? selectedItems[0] : null;
@@ -159,6 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onOpenGridModal={onOpenGridModal}
                 onCenterOnSheet={onCenterOnSheet}
                 onUngroup={singleItem.groupId ? onUngroup : undefined}
+                onRotateSelection={onRotateSelection}
               />
             ) : selectedItems.length > 1 ? (
               <MultiSelectionPanel
@@ -172,6 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onDistribute={onDistribute}
                 onBatchUpdate={onBatchUpdate}
                 onDeleteSelected={onDeleteSelected}
+                onRotateSelection={onRotateSelection}
               />
             ) : (
               <SheetSettings

@@ -20,7 +20,7 @@ import {
 } from './utils/storage';
 import { loadFile } from './utils/fileLoader';
 import { getItemBounds, getCombinedBounds, POINT_IN_MM } from './utils/units';
-import { addWorkspacePage, deleteWorkspacePage, switchWorkspacePage } from './utils/workspace';
+import { addWorkspacePage, deleteWorkspacePage, switchWorkspacePage, rotateItemsAroundCenter } from './utils/workspace';
 
 // Components
 import { Header } from './components/Header';
@@ -182,8 +182,15 @@ export function App() {
   }, [paperDimensions.width, paperDimensions.height]);
 
   // Center fit on first render
+  const initialFitDoneRef = useRef(false);
   useEffect(() => {
-    handleZoomFit();
+    if (!initialFitDoneRef.current) {
+      initialFitDoneRef.current = true;
+      const frameId = requestAnimationFrame(() => {
+        handleZoomFit();
+      });
+      return () => cancelAnimationFrame(frameId);
+    }
   }, [handleZoomFit]);
 
   // Update item(s)
@@ -601,10 +608,39 @@ export function App() {
     [items, selectedIds, paperDimensions, snapping.reference, handleUpdateItems]
   );
 
+  // Rotate selected items around their collective center, preserving relative positions
+  const handleRotateSelection = useCallback(
+    (deltaDegrees: number) => {
+      if (selectedIds.length === 0) return;
+
+      const selectedSet = new Set(selectedIds);
+      const groupIds = new Set<string>();
+
+      items.forEach((item) => {
+        if (selectedSet.has(item.id) && item.groupId) {
+          groupIds.add(item.groupId);
+        }
+      });
+
+      const itemsToRotate = items.filter(
+        (item) => selectedSet.has(item.id) || (item.groupId && groupIds.has(item.groupId))
+      );
+
+      const rotatedItems = rotateItemsAroundCenter(itemsToRotate, deltaDegrees);
+      const rotatedMap = new Map(rotatedItems.map((item) => [item.id, item]));
+
+      setItems(
+        (prev) => prev.map((item) => rotatedMap.get(item.id) || item),
+        true
+      );
+    },
+    [items, selectedIds, setItems]
+  );
+
   // Apply Grid duplication (repositions original item in cell 0,0 and adds clones)
   const handleApplyGrid = useCallback(
     (
-      updatedTarget: { id: string; x: number; y: number; groupId?: string },
+      updatedTarget: { id: string; x: number; y: number; rotation?: number; groupId?: string },
       newClones: ArtItem[]
     ) => {
       setItems((prev) => {
@@ -614,6 +650,7 @@ export function App() {
                 ...item,
                 x: updatedTarget.x,
                 y: updatedTarget.y,
+                rotation: updatedTarget.rotation !== undefined ? updatedTarget.rotation : item.rotation,
                 groupId: updatedTarget.groupId ?? item.groupId,
               }
             : item
@@ -831,6 +868,13 @@ export function App() {
         return;
       }
 
+      // Rotate Selection / Group: Alt+R or Ctrl+Shift+R
+      if ((e.altKey && e.code === 'KeyR') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyR')) {
+        e.preventDefault();
+        handleRotateSelection(90);
+        return;
+      }
+
       // Tools: Key V (Select), Key H (Pan)
       if (e.code === 'KeyV') {
         setToolMode('select');
@@ -852,6 +896,7 @@ export function App() {
     handleDeleteSelected,
     handleGroupSelected,
     handleUngroupSelected,
+    handleRotateSelection,
     setSnapping,
     items,
   ]);
@@ -885,10 +930,6 @@ export function App() {
         onSwitchPage={handleSwitchPage}
         onAddPage={handleAddPage}
         onDeletePage={handleDeletePage}
-        paperFormat={paperFormat}
-        paperOrientation={paperOrientation}
-        onUpdateFormat={handleUpdateFormat}
-        onUpdateOrientation={handleUpdateOrientation}
         onSaveProject={handleSaveProject}
         onOpenProjectClick={() => projectInputRef.current?.click()}
         onOpenExportModal={() => setIsExportModalOpen(true)}
@@ -924,6 +965,7 @@ export function App() {
         onToggleLockSelected={handleToggleLockSelected}
         onAlignSelected={handleAlign}
         onOpenGridModal={() => setIsGridModalOpen(true)}
+        onRotateSelection={handleRotateSelection}
       />
 
       {/* Workspace Area: Canvas + Sidebar */}
@@ -964,6 +1006,7 @@ export function App() {
           onGroup={handleGroupSelected}
           onUngroup={handleUngroupSelected}
           onCenterOnSheet={handleCenterSelectedOnSheet}
+          onRotateSelection={handleRotateSelection}
           onUpdateFormat={handleUpdateFormat}
           onUpdateOrientation={handleUpdateOrientation}
           onUpdateSnapping={(s) => setSnapping((prev) => ({ ...prev, ...s }))}

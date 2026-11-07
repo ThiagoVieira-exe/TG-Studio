@@ -16,6 +16,8 @@ import {
   Group,
   Ungroup,
   Crosshair,
+  RotateCcw,
+  RotateCw,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -45,6 +47,7 @@ interface ToolbarProps {
   onToggleLockSelected: () => void;
   onAlignSelected: (align: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom') => void;
   onOpenGridModal: () => void;
+  onRotateSelection?: (delta: number) => void;
 }
 
 const ToolbarSeparator: React.FC = () => (
@@ -103,6 +106,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onDuplicateSelected,
   onDeleteSelected,
   onOpenGridModal,
+  onRotateSelection,
 }) => {
   return (
     <div className="h-10 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-2 z-30 select-none text-zinc-300">
@@ -174,6 +178,28 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <Crosshair size={13} className="text-cyan-400" />
               <span>Centralizar</span>
             </button>
+
+            {/* Rotate Selection / Group */}
+            {onRotateSelection && (
+              <div className="flex items-center bg-zinc-950 p-0.5 rounded-md border border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => onRotateSelection(-90)}
+                  className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition"
+                  title="Girar artes selecionadas 90° anti-horário (mantém formação relativa)"
+                >
+                  <RotateCcw size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRotateSelection(90)}
+                  className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded transition"
+                  title="Girar artes selecionadas 90° horário (mantém formação relativa)"
+                >
+                  <RotateCw size={13} />
+                </button>
+              </div>
+            )}
 
             <ToolbarSeparator />
 

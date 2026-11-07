@@ -32,6 +32,7 @@ export const ArtItemView = React.memo<ArtItemViewProps>(({
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   const scale = BASE_PX_PER_MM * zoom;
+  const isRound = Boolean(item.isRound || item.shape === 'circle');
   const displayX = item.x + (previewOffset?.deltaX ?? 0);
   const displayY = item.y + (previewOffset?.deltaY ?? 0);
   const geometry = getBorderGeometry({ ...item, x: displayX, y: displayY });
@@ -114,6 +115,7 @@ export const ArtItemView = React.memo<ArtItemViewProps>(({
             top: borderPadPx,
             width: `calc(100% - ${borderPadPx * 2}px)`,
             height: `calc(100% - ${borderPadPx * 2}px)`,
+            borderRadius: isRound ? '50%' : undefined,
             objectFit: 'fill', // Essential: stretches/squashes without clipping or cropping!
             imageRendering: 'auto',
           }}
@@ -131,7 +133,9 @@ export const ArtItemView = React.memo<ArtItemViewProps>(({
       {/* Selection Box & Resize Handles */}
       {isSelected && (
         <div
-          className="absolute inset-0 border-2 border-indigo-500 pointer-events-none shadow-[0_0_0_1px_rgba(255,255,255,0.7)]"
+          className={`absolute inset-0 pointer-events-none shadow-[0_0_0_1px_rgba(255,255,255,0.7)] ${
+            isRound ? 'border-2 border-indigo-500 rounded-full' : 'border-2 border-indigo-500'
+          }`}
         >
           {/* Dimension Tag */}
           <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-indigo-600 text-white font-mono text-[10px] px-1.5 py-0.5 rounded shadow whitespace-nowrap pointer-events-none flex items-center gap-1">

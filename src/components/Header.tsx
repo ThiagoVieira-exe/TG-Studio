@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PaperFormat, PaperOrientation, WorkspacePage } from '../types';
+import type { WorkspacePage } from '../types';
 import {
   Printer,
   Download,
@@ -14,10 +14,6 @@ interface HeaderProps {
   onSwitchPage: (id: string) => void;
   onAddPage: () => void;
   onDeletePage: (id: string) => void;
-  paperFormat: PaperFormat;
-  paperOrientation: PaperOrientation;
-  onUpdateFormat: (fmt: PaperFormat) => void;
-  onUpdateOrientation: (ori: PaperOrientation) => void;
   onSaveProject: () => void;
   onOpenProjectClick: () => void;
   onOpenExportModal: () => void;
@@ -31,10 +27,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchPage,
   onAddPage,
   onDeletePage,
-  paperFormat,
-  paperOrientation,
-  onUpdateFormat,
-  onUpdateOrientation,
   onSaveProject,
   onOpenProjectClick,
   onOpenExportModal,
@@ -43,8 +35,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 z-40 select-none">
-      {/* Brand & Project Name */}
+      {/* Brand, Print Button & Pages */}
       <div className="flex items-center gap-3">
+        {/* Brand & Logo */}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-md bg-white/95 flex items-center justify-center shadow-lg shadow-indigo-500/20 overflow-hidden">
             <img
@@ -65,9 +58,19 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="h-5 w-[1px] bg-zinc-800" />
 
-        <div className="h-7 w-px bg-zinc-800" />
+        {/* Botão de Imprimir posicionado no topo ao lado da marca/logo */}
+        <button
+          onClick={onPrintDirect}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:via-indigo-400 hover:to-cyan-400 text-white border border-indigo-400/60 rounded-md text-[11px] font-bold shadow-md shadow-indigo-900/30 transition hover:scale-[1.02] cursor-pointer"
+          title="Imprimir Página Física — Ctrl+Shift+P"
+        >
+          <Printer size={15} />
+          <span>Imprimir</span>
+        </button>
 
-        {/* Workspace pages */}
+        <div className="h-5 w-[1px] bg-zinc-800 hidden sm:block" />
+
+        {/* Workspace pages tabs */}
         <div className="flex items-center gap-1 max-w-[42vw] overflow-x-auto">
           {pages.map((page) => (
             <div
@@ -97,52 +100,17 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
           ))}
-          <button onClick={onAddPage} className="px-2 py-1 text-emerald-400 hover:bg-zinc-900 rounded text-sm" title="Nova página">+</button>
-            {pages.length > 1 && (
-            <button onClick={() => onDeletePage(currentPageId)} className="px-2 py-1 text-rose-400 hover:bg-zinc-900 rounded text-sm" title="Excluir página">×</button>
-          )}
+          <button
+            onClick={onAddPage}
+            className="px-2 py-1 text-emerald-400 hover:bg-zinc-900 rounded text-sm font-bold"
+            title="Nova página"
+          >
+            +
+          </button>
         </div>
       </div>
 
-      {/* Quick Paper Format Bar */}
-      <div className="hidden md:flex items-center gap-1.5 bg-zinc-900 p-0.5 rounded-md border border-zinc-800 text-xs">
-        <button
-          onClick={() => onUpdateFormat('A4')}
-          className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${
-            paperFormat === 'A4'
-              ? 'bg-indigo-600 text-white'
-              : 'text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          A4
-        </button>
-        <button
-          onClick={() => onUpdateFormat('A3')}
-          className={`px-2 py-0.5 rounded text-[11px] font-medium transition ${
-            paperFormat === 'A3'
-              ? 'bg-indigo-600 text-white'
-              : 'text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          A3
-        </button>
-
-        <div className="h-3.5 w-[1px] bg-zinc-800 mx-0.5" />
-
-        <button
-          onClick={() =>
-            onUpdateOrientation(
-              paperOrientation === 'portrait' ? 'landscape' : 'portrait'
-            )
-          }
-          className="px-1.5 py-0.5 text-zinc-400 hover:text-zinc-200 rounded font-mono text-[10px] transition"
-          title="Alternar Retrato / Paisagem"
-        >
-          {paperOrientation === 'portrait' ? '↕' : '↔'}
-        </button>
-      </div>
-
-      {/* Action Buttons */}
+      {/* Action Buttons (Right) */}
       <div className="flex items-center gap-1.5">
         <button
           onClick={onOpenHelpModal}
@@ -174,20 +142,11 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onOpenExportModal}
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border border-emerald-500/40 rounded-md text-[11px] font-medium transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border border-emerald-500/40 rounded-md text-[11px] font-medium transition"
           title="Exportar (PDF 300 DPI, PNG, JPG)"
         >
           <Download size={14} />
           <span>Exportar</span>
-        </button>
-
-        <button
-          onClick={onPrintDirect}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:via-indigo-400 hover:to-cyan-400 text-white border border-indigo-400/60 rounded-md text-[11px] font-bold shadow-lg shadow-indigo-900/40 transition hover:scale-[1.02]"
-          title="Imprimir — Ctrl+Shift+P"
-        >
-          <Printer size={15} />
-          <span>Imprimir</span>
         </button>
       </div>
     </header>

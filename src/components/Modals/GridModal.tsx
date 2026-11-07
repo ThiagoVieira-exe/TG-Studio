@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ArtItem, PaperDimensions } from '../../types';
-import { X, Grid, Sparkles, Layers } from 'lucide-react';
+import { X, Grid, Sparkles, Layers, RotateCw } from 'lucide-react';
 import { formatMeasure } from '../../utils/units';
 
 interface GridModalProps {
@@ -10,7 +10,7 @@ interface GridModalProps {
   paper: PaperDimensions;
   margin?: number;
   onApplyGrid: (
-    updatedTarget: { id: string; x: number; y: number; groupId?: string },
+    updatedTarget: { id: string; x: number; y: number; rotation?: number; groupId?: string },
     newItems: ArtItem[]
   ) => void;
 }
@@ -29,6 +29,7 @@ export const GridModal: React.FC<GridModalProps> = ({
   const [spacingY, setSpacingY] = useState(2.0);
   const [startFromMargin, setStartFromMargin] = useState(true);
   const [autoGroup, setAutoGroup] = useState(true);
+  const [currentRotation, setCurrentRotation] = useState<number>(targetItem?.rotation || 0);
 
   if (!isOpen || !targetItem) return null;
 
@@ -36,30 +37,48 @@ export const GridModal: React.FC<GridModalProps> = ({
   const totalItemW = targetItem.width + bWidth * 2;
   const totalItemH = targetItem.height + bWidth * 2;
 
-  // Auto calculate maximum copies fitting on the sheet
+  // Oriented physical dimensions based on current item rotation
+  const rot = Math.round(((currentRotation % 360) + 360) % 360);
+  const rad = (rot * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+
+  const orientedItemW = totalItemW * cos + totalItemH * sin;
+  const orientedItemH = totalItemW * sin + totalItemH * cos;
+
+  // Auto calculate maximum copies fitting on the sheet following the item orientation
   const handleAutoFill = () => {
     const availW = paper.width - margin * 2;
     const availH = paper.height - margin * 2;
 
-    const maxCols = Math.max(1, Math.floor((availW + spacingX) / (totalItemW + spacingX)));
-    const maxRows = Math.max(1, Math.floor((availH + spacingY) / (totalItemH + spacingY)));
+    const maxCols = Math.max(1, Math.floor((availW + spacingX) / (orientedItemW + spacingX)));
+    const maxRows = Math.max(1, Math.floor((availH + spacingY) / (orientedItemH + spacingY)));
 
     setCols(maxCols);
     setRows(maxRows);
     setStartFromMargin(true);
   };
 
+  const handleToggleOrientation = () => {
+    const nextRot = (rot + 90) % 360;
+    setCurrentRotation(nextRot);
+  };
+
   const handleGenerate = () => {
-    const startX = startFromMargin ? margin + bWidth : targetItem.x;
-    const startY = startFromMargin ? margin + bWidth : targetItem.y;
+    const startX = startFromMargin ? margin : (targetItem.x - bWidth);
+    const startY = startFromMargin ? margin : (targetItem.y - bWidth);
 
     const groupId = autoGroup ? `group-grid-${Date.now()}` : targetItem.groupId;
 
     // 1. Updated target item (cell 0, 0)
+    const cell0CenterX = startX + orientedItemW / 2;
+    const cell0CenterY = startY + orientedItemH / 2;
+
     const updatedTarget = {
       id: targetItem.id,
-      x: startX,
-      y: startY,
+      x: cell0CenterX - targetItem.width / 2,
+      y: cell0CenterY - targetItem.height / 2,
+      rotation: currentRotation,
       groupId,
     };
 
@@ -71,8 +90,11 @@ export const GridModal: React.FC<GridModalProps> = ({
         // Skip position (0, 0) because that is the targetItem itself
         if (r === 0 && c === 0) continue;
 
-        const posX = startX + c * (totalItemW + spacingX);
-        const posY = startY + r * (totalItemH + spacingY);
+        const cellCenterX = startX + c * (orientedItemW + spacingX) + orientedItemW / 2;
+        const cellCenterY = startY + r * (orientedItemH + spacingY) + orientedItemH / 2;
+
+        const posX = cellCenterX - targetItem.width / 2;
+        const posY = cellCenterY - targetItem.height / 2;
 
         itemsToAdd.push({
           ...targetItem,
@@ -80,6 +102,7 @@ export const GridModal: React.FC<GridModalProps> = ({
           name: `${targetItem.name} (${c + 1},${r + 1})`,
           x: posX,
           y: posY,
+          rotation: currentRotation,
           groupId,
           zIndex: targetItem.zIndex + (r * cols + c),
         });
@@ -91,10 +114,12 @@ export const GridModal: React.FC<GridModalProps> = ({
   };
 
   const totalCopies = cols * rows;
-  const gridTotalW = cols * totalItemW + (cols - 1) * spacingX;
-  const gridTotalH = rows * totalItemH + (rows - 1) * spacingY;
+  const gridTotalW = cols * orientedItemW + (cols - 1) * spacingX;
+  const gridTotalH = rows * orientedItemH + (rows - 1) * spacingY;
   const fitsWidth = gridTotalW <= paper.width - margin * 2;
   const fitsHeight = gridTotalH <= paper.height - margin * 2;
+
+  const isLandscapeOriented = orientedItemW > orientedItemH;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
@@ -115,22 +140,40 @@ export const GridModal: React.FC<GridModalProps> = ({
         </div>
 
         <div className="p-5 space-y-4 text-xs text-zinc-300">
-          {/* Target Item Info & Auto fill button */}
-          <div className="flex items-center justify-between p-3 bg-zinc-950 rounded-lg border border-zinc-800">
-            <div>
-              <span className="font-medium text-zinc-200">{targetItem.name}</span>
-              <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
-                Tamanho com borda: {formatMeasure(totalItemW)} × {formatMeasure(totalItemH)} mm
-              </p>
+          {/* Target Item Info, Orientation Toggle & Auto fill */}
+          <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-medium text-zinc-200">{targetItem.name}</span>
+                <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                  Ocupação na folha: <strong className="text-indigo-300">{formatMeasure(orientedItemW)} × {formatMeasure(orientedItemH)} mm</strong>
+                </p>
+                <p className="text-[10px] text-zinc-500 font-mono">
+                  Orientação: {rot}° ({isLandscapeOriented ? 'Horizontal / Paisagem' : 'Vertical / Retrato'})
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5 items-end">
+                <button
+                  type="button"
+                  onClick={handleToggleOrientation}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded border border-zinc-700 text-[10px] transition font-medium"
+                  title="Girar orientação da arte em 90° para a grade"
+                >
+                  <RotateCw size={11} className="text-indigo-400" />
+                  <span>Girar 90°</span>
+                </button>
+
+                <button
+                  onClick={handleAutoFill}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-lg text-xs font-semibold transition"
+                  title="Calcular automaticamente o número máximo de cópias que cabem na folha com a orientação atual"
+                >
+                  <Sparkles size={13} />
+                  <span>Preencher Máximo</span>
+                </button>
+              </div>
             </div>
-            <button
-              onClick={handleAutoFill}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-lg text-xs font-semibold transition"
-              title="Calcular automaticamente o número máximo de cópias que cabem na folha"
-            >
-              <Sparkles size={13} />
-              <span>Preencher Máximo</span>
-            </button>
           </div>
 
           {/* Columns & Rows */}

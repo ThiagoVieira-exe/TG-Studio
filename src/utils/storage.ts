@@ -1,4 +1,7 @@
 import type { ProjectData } from '../types';
+import { saveProjectToDb, loadProjectFromDb } from './indexedDbStorage';
+
+export { saveProjectToDb, loadProjectFromDb };
 
 const STORAGE_KEY = 'tg_studio_autosave_v1';
 
@@ -42,6 +45,8 @@ export function saveToLocalStorage(project: ProjectData): void {
   } catch (err) {
     console.warn('Não foi possível salvar no localStorage (limite de cota atingido):', err);
   }
+  // Robust async storage for heavy projects with high-resolution images
+  saveProjectToDb(project).catch(() => {});
 }
 
 export function loadFromLocalStorage(): ProjectData | null {

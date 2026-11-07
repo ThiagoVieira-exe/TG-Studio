@@ -19,6 +19,7 @@ export interface ItemBorder {
 }
 
 export type BorderMode = 'outer' | 'outer-inner';
+export type ArtItemShape = 'rectangle' | 'circle';
 
 export interface ArtItem {
   id: string;
@@ -36,6 +37,8 @@ export interface ArtItem {
   border: ItemBorder;
   zIndex: number;
   groupId?: string;
+  isRound?: boolean;        // whether item has circular/round shape
+  shape?: ArtItemShape;     // 'rectangle' | 'circle'
 }
 
 export type SnapReference = 'outer' | 'content';

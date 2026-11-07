@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { ArtItem, ToolMode } from '../../types';
 import {
   Lock,
@@ -11,6 +11,7 @@ import {
   ChevronsUp,
   ChevronsDown,
   RotateCw,
+  RotateCcw,
   Grid,
   Check,
   Crosshair,
@@ -19,6 +20,8 @@ import {
   ChevronRight,
   Ban,
   ArrowLeftRight,
+  Square,
+  Circle,
 } from 'lucide-react';
 import { pickColorWithNativeEyeDropper } from '../../utils/colorSampler';
 import { formatMeasure, POINT_IN_MM } from '../../utils/units';
@@ -37,6 +40,7 @@ interface PropertiesPanelProps {
   onOpenGridModal: () => void;
   onCenterOnSheet?: (axis?: 'both' | 'horizontal' | 'vertical') => void;
   onUngroup?: () => void;
+  onRotateSelection?: (delta: number) => void;
 }
 
 // ── Silhouette Studio 4.5 style palette ────────────────────────────────
@@ -83,6 +87,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onOpenGridModal,
   onCenterOnSheet,
   onUngroup,
+  onRotateSelection,
 }) => {
   const [customHex, setCustomHex] = useState(item.border.color);
   const [recentColors, setRecentColors] = useState<string[]>(DEFAULT_RECENT);
@@ -94,13 +99,40 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const [yDraft, setYDraft] = useState(formatMeasure(item.y));
   const [borderDraft, setBorderDraft] = useState(formatMeasure(item.border.width));
 
-  useEffect(() => {
+  const [prevSync, setPrevSync] = useState({
+    id: item.id,
+    w: item.width,
+    h: item.height,
+    x: item.x,
+    y: item.y,
+    bw: item.border.width,
+    unit: borderUnit,
+  });
+
+  if (
+    prevSync.id !== item.id ||
+    prevSync.w !== item.width ||
+    prevSync.h !== item.height ||
+    prevSync.x !== item.x ||
+    prevSync.y !== item.y ||
+    prevSync.bw !== item.border.width ||
+    prevSync.unit !== borderUnit
+  ) {
+    setPrevSync({
+      id: item.id,
+      w: item.width,
+      h: item.height,
+      x: item.x,
+      y: item.y,
+      bw: item.border.width,
+      unit: borderUnit,
+    });
     setWidthDraft(formatMeasure(item.width));
     setHeightDraft(formatMeasure(item.height));
     setXDraft(formatMeasure(item.x));
     setYDraft(formatMeasure(item.y));
     setBorderDraft(formatMeasure(borderUnit === 'mm' ? item.border.width : item.border.width * 72 / 25.4));
-  }, [item.id, item.width, item.height, item.x, item.y, item.border.width, borderUnit]);
+  }
 
   // Push color into recent list
   const pushRecent = (hex: string) => {
@@ -359,6 +391,46 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               {preset.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* ═══ Shape (Retangular vs Redonda / Circular) ═══ */}
+      <div className="space-y-1.5 pt-2 border-t border-zinc-800">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-zinc-300 text-[11px]">Formato da Arte</span>
+          {(item.isRound || item.shape === 'circle') && (
+            <span className="text-[10px] text-indigo-400 font-mono">Borda Redonda Ativa</span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => onUpdate({ isRound: false, shape: 'rectangle' })}
+            disabled={item.locked}
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-medium border transition ${
+              !item.isRound && item.shape !== 'circle'
+                ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/60 font-semibold'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-850'
+            }`}
+            title="Formato retangular / quadrado padrão"
+          >
+            <Square size={13} />
+            <span>Retangular</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onUpdate({ isRound: true, shape: 'circle' })}
+            disabled={item.locked}
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-medium border transition ${
+              item.isRound || item.shape === 'circle'
+                ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/60 font-semibold'
+                : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-850'
+            }`}
+            title="Formato redondo / circular (com borda e recorte circulares)"
+          >
+            <Circle size={13} />
+            <span>Redonda</span>
+          </button>
         </div>
       </div>
 
@@ -674,6 +746,29 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <Ungroup size={13} />
             <span>Desagrupar</span>
           </button>
+        )}
+
+        {item.groupId && onRotateSelection && (
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onRotateSelection(-90)}
+              className="flex items-center justify-center gap-1 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded transition text-[10px] font-medium"
+              title="Girar todo o grupo 90° anti-horário mantendo arranjo relativo"
+            >
+              <RotateCcw size={12} />
+              <span>Girar Grupo -90°</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRotateSelection(90)}
+              className="flex items-center justify-center gap-1 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded transition text-[10px] font-medium"
+              title="Girar todo o grupo 90° horário mantendo arranjo relativo"
+            >
+              <RotateCw size={12} />
+              <span>Girar Grupo +90°</span>
+            </button>
+          </div>
         )}
 
         <button

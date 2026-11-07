@@ -43,4 +43,19 @@ describe('border geometry', () => {
     expect(isOutsidePaper(geometry, 210, 297)).toBe(true);
     expect(isOutsidePaper(getBorderGeometry(makeItem()), 210, 297)).toBe(false);
   });
+
+  it('calculates outer bounds accurately for round/circular items', () => {
+    const roundItem: ArtItem = {
+      ...makeItem(),
+      isRound: true,
+      shape: 'circle',
+      width: 40,
+      height: 40,
+      border: { enabled: true, width: 2, color: '#0000ff', mode: 'outer' },
+    };
+    const geometry = getBorderGeometry(roundItem);
+    expect(geometry.borderWidth).toBe(2);
+    expect(geometry.outerWidth).toBe(44);
+    expect(geometry.outerHeight).toBe(44);
+  });
 });
