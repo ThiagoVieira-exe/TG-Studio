@@ -1,9 +1,10 @@
-const CACHE_NAME = 'tg-studio-v22';
+const CACHE_NAME = 'tg-studio-v23';
 const BASE_PATH = new URL('./', self.registration.scope).pathname;
 const ASSETS = [
   BASE_PATH,
   `${BASE_PATH}index.html`,
   `${BASE_PATH}manifest.json`,
+  `${BASE_PATH}tg-logo.png`,
   `${BASE_PATH}favicon.svg`
 ];
 

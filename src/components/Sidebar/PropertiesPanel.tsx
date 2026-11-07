@@ -376,7 +376,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <div className="grid grid-cols-3 gap-1 w-full">
           {[
             { label: '55x55', w: 55.5, h: 55.5 },
-            { label: '55x90', w: 55.5, h: 92 },
+            { label: '55x90', w: 55.5, h: 91 },
             { label: '67x67', w: 66, h: 66 },
             { label: '65x95', w: 65, h: 95 },
             { label: '7x10cm', w: 70, h: 100 },

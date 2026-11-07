@@ -9,9 +9,16 @@
   "theme_color": "#4f46e5",
   "icons": [
     {
-      "src": "./favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "./tg-logo.png",
+      "sizes": "192x192 512x512 any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./tg-logo.png",
+      "sizes": "1181x1181",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
